@@ -1,0 +1,448 @@
+integer oldSquare;
+integer newSquare;
+string aVector;
+list squares;
+string type;
+string color;
+integer colorNum;
+integer valid;
+
+integer empty (integer new)
+{
+    integer i = llList2Integer(squares,new);
+    i = llFloor(i/10);
+    return i;
+}
+ 
+integer bOrW (integer colorNum)
+{
+    integer bw=llFloor(llList2Integer(squares,colorNum)/10);
+    return bw;
+}
+
+fixList(integer o, integer n)
+{
+                squares=llListReplaceList(squares,[llList2Integer(squares,o)],n,n);
+                squares=llListReplaceList(squares,[0],o,o);
+}
+
+linkOk(integer ok)
+{
+    llMessageLinked(LINK_ALL_OTHERS,ok,aVector,"");
+    return;
+}
+
+sayList(list sqr) // Delete this function
+{
+    integer i = llGetListLength(sqr);
+    string Squares;
+    while(i>=0)
+    {
+        Squares += (","+(string)llList2Integer(squares,i-1));
+        if(i%8==1)
+        {
+            llOwnerSay(Squares);
+            Squares="";
+        }
+        i--;
+    }
+}
+
+testVert(integer old, integer new)
+{   
+    valid=1;
+    integer count=old;
+    integer flip;
+    
+    if(old>=new)flip=-1;
+    if(new>=old)flip=1;
+
+        while(count!=new-(8*flip))
+        {
+            count+=(8*flip);
+            integer full=empty(count);
+            if(full!=0)
+            {
+                valid=0;
+            }
+        } 
+}
+
+
+horizontalRange(integer old, integer new) 
+{
+    
+    integer oldMod=(old%8);
+    integer newMod=(new%8);
+    integer posRange;
+    integer negRange;
+    integer sameLine;
+    
+    valid=1;
+    
+    if(new>=old)
+    {
+        sameLine=new-old;
+        posRange=(7-oldMod);
+        if(sameLine>=1+posRange)
+        {
+            valid=0;
+        }
+    }
+    
+    if(old>=new)
+    {
+        sameLine=old-new;
+        negRange=(0+oldMod);
+        if(sameLine>=1+negRange)
+        {
+            valid=0;
+        }
+    }
+}
+
+lineEmpty(integer old,integer new)
+{
+    integer count=old;
+    integer i;
+    
+    if(new>=old)
+    {
+        while(count<=new-2)
+        {
+            count++;
+            i=empty((count));
+            if(i!=0)
+            {
+               valid=0;
+            }
+
+        }
+    }
+
+    if(new<=old)
+    {
+        while(count>=new+2)
+        {
+            i=empty((count-1));
+            if(i!=0)
+            {
+               valid=0;
+            }
+            count--;
+        }
+    }        
+}
+
+isOnDiag(integer old,integer new)
+{
+    integer dif = llAbs(new-old);
+
+    if((dif%7)==0)valid=1;
+    if((dif%9)==0)valid=1;
+}
+
+clearDiag(integer old,integer new)
+{
+    integer dif = llAbs(new-old);
+    if((dif%7)==0)
+    {
+        integer count=old;
+        integer i;
+        if(old<=new)
+        {
+            count+=7;
+            while(count<=new-7)
+            {
+                i=empty(count);
+                if(i!=0)valid=0;
+                count+=7;
+            }
+        }
+        if(old>=new)
+        {
+            count-=7; 
+            while(count>=new+7)
+            {
+                i=empty(count);
+                if(i!=0)valid=0;
+                count-=7;
+            }
+        }
+    }
+    if((dif%9)==0)
+    {
+        integer count=old;
+        integer i;
+        if(old<=new)
+        {
+            count+=9;
+            while(count<=new-9)
+            {
+                i=empty(count);
+                if(i!=0)valid=0;
+                count+=9;
+            }
+        }
+        if(old>=new)
+        {
+            count-=9;
+            while(count>=new+9)
+            {
+                i=empty(count);
+                if(i!=0)valid=0;
+                count-=9;
+            }
+        }
+    }     
+}
+
+bishop(integer old,integer new)
+{
+    integer O=empty(new);
+    valid=0;
+    isOnDiag(oldSquare,newSquare);
+    if(valid==1)clearDiag(oldSquare,newSquare);
+    if(O==colorNum)valid=0;
+    if(valid==1)
+    {
+        if(O!=0)llShout(237,"Die "+(string)(newSquare+1));
+        fixList(oldSquare,newSquare);
+    }
+    
+    linkOk(valid);
+    
+    
+}
+
+rook(integer old,integer new)
+{
+    valid=0;
+    integer O = empty(new);
+    
+    if(old%8==new%8)testVert(oldSquare,newSquare);  
+    
+    if(old%8!=new%8)
+    {
+        horizontalRange(oldSquare,newSquare);
+        lineEmpty(oldSquare,newSquare);
+    }
+    
+    if(old==new)valid=0;
+    if(O==colorNum)valid=0;
+    
+    if(valid==1)
+    {
+        if(O!=0)llShout(237,"Die "+(string)(newSquare+1));
+        fixList(oldSquare,newSquare);
+    }
+    
+    linkOk(valid);
+    
+}
+
+pawn(integer old,integer new)
+{
+    integer O = empty(new);
+    integer first;
+    integer last;
+    integer firstMove;
+    
+    if (colorNum==1)
+    {
+        first=old;
+        last=new;
+        if(old>=48)firstMove=1;
+        else firstMove=0;
+    }
+    if (colorNum==2)
+    {
+        last=old;
+        first=new;
+        if(old<=16)firstMove=1;
+        else firstMove=0;
+    }
+    
+    if(O==0)
+    {
+        if((first-last)==8)
+        {
+            
+            linkOk(1);
+            fixList(oldSquare,newSquare);
+            valid=1;
+        }
+        if(firstMove=1)
+        {    
+            if((first-last)==16)
+            {
+                linkOk(1);
+                fixList(oldSquare,newSquare);
+                valid=1;
+            }
+        }
+    }    
+    if(O!=0)
+    {
+        integer i=bOrW(new);
+        
+        if(i!=colorNum) 
+        {
+            if((first-last)==7)
+            {      
+                llShout(237,"Die "+(string)(newSquare+1));
+                valid=1;
+                linkOk(1);
+                fixList(oldSquare,newSquare);
+            }  
+            
+            if((first-last)==9)
+            {      
+                llShout(237,"Die "+(string)(newSquare+1));
+                valid=1;
+                linkOk(1);
+                fixList(oldSquare,newSquare);
+
+            }            
+        }
+    }
+    if(valid!=1)linkOk(0);
+}
+   
+knight(integer old,integer new)
+{
+    valid=0;
+    
+    integer dif = llAbs(new-old);
+    integer i = empty(new);
+    
+    if(dif==6)valid=1;
+    if(dif==10)valid=1;
+    if(dif==15)valid=1;
+    if(dif==17)valid=1;
+    
+    if(i==colorNum)valid=0;
+    
+    
+    if(valid==1)
+    {
+        llShout(237,"Die "+(string)(newSquare+1));
+        fixList(oldSquare,newSquare);
+    }
+    
+    linkOk(valid);
+}
+
+
+
+queen(integer old,integer new)
+{
+    integer O=empty(new);
+    if(old%8==new%8)testVert(oldSquare,newSquare);  
+    if(old%8!=new%8)
+    {
+        horizontalRange(oldSquare,newSquare);
+        lineEmpty(oldSquare,newSquare);
+    }
+    if(valid==0)
+    {
+        isOnDiag(oldSquare,newSquare);
+        if(valid==1)clearDiag(oldSquare,newSquare);
+    }
+    
+    if(O==colorNum)valid=0;
+    
+    if(valid==1)
+    {
+        if(O!=0)llShout(237,"Die "+(string)(newSquare+1));
+        fixList(oldSquare,newSquare);
+    }
+    
+    linkOk(valid);
+}
+
+king(integer old,integer new)
+{
+    valid=0;
+    integer O=empty(new);
+    if(old%8==new%8)
+    {
+        if(llAbs(old-new)==8)valid=1;
+    }
+    if(llAbs(old-new)==1)horizontalRange(old,new);
+    if(llAbs(old-new)==7)valid=1;
+    if(llAbs(old-new)==9)valid=1;
+    if(O==colorNum)valid=0;
+    
+    if(valid==1)
+    {
+        //Needs a isInCheck function here
+        if(O!=0)llShout(237,"Die "+(string)(newSquare+1));
+        fixList(oldSquare,newSquare);
+    }
+    
+    linkOk(valid);
+}
+
+default
+{
+    on_rez(integer start)
+    {
+        squares=[21,22,23,25,24,23,22,21,
+                 20,20,20,20,20,20,20,20,
+                 0,0,0,0,0,0,0,0,
+                 0,0,0,0,0,0,0,0,
+                 0,0,0,0,0,0,0,0,
+                 0,0,0,0,0,0,0,0,
+                 10,10,10,10,10,10,10,10,
+                 11,12,13,15,14,13,12,11];
+                 
+                 oldSquare=0;
+                 newSquare=0;
+                 aVector="";
+                 type="";
+                 color="";
+    }
+    
+    state_entry()
+    {
+        squares=[21,22,23,25,24,23,22,21,
+                 20,20,20,20,20,20,20,20,
+                 0,0,0,0,0,0,0,0,
+                 0,0,0,0,0,0,0,0,
+                 0,0,0,0,0,0,0,0,
+                 0,0,0,0,0,0,0,0,
+                 10,10,10,10,10,10,10,10,
+                 11,12,13,15,14,13,12,11];
+
+                 
+    }
+                 
+    link_message(integer sender,integer num, string str,key id)
+    {
+        
+        valid=0;
+        
+         list message=llParseString2List(str,[" "],[""]);
+         aVector=llList2String(message,0);
+         type=llList2String(message,1);
+         string square=llList2String(message,2);
+         color=llList2String(message,3);
+
+         oldSquare=((integer)square)-1;
+         newSquare=num-1;
+
+
+         
+         if(color=="White")colorNum=1;
+         
+         if(color=="Black")colorNum=2;
+
+         if(type=="Pawn")pawn(oldSquare,newSquare);   
+         if(type=="Rook")rook(oldSquare,newSquare);  
+         if(type=="Knight")knight(oldSquare,newSquare);   
+         if(type=="Bishop")bishop(oldSquare,newSquare);  
+         if(type=="Queen")queen(oldSquare,newSquare);               
+         if(type=="King")king(oldSquare,newSquare);  
+    }
+}
